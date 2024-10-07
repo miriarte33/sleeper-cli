@@ -16,7 +16,8 @@ import (
 var matchupsCmd = &cobra.Command{
 	Use:   "matchups",
 	Short: "View matchups in your league for a given week",
-	Long:  `View matchups in your league for a given week. Pass in the week with the --week flag.`,
+	Long: `View matchups in your league for a given week. Pass in the week with the --week flag.
+Note: Matchups that are still in-progress may not have accurate scores because of limitations with Sleeper's free API.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		week, err := cmd.Flags().GetInt("week")
 		if err != nil {
@@ -49,8 +50,20 @@ var matchupsCmd = &cobra.Command{
 		}
 
 		matchupDict := matchupMapper.MapToMatchupDict(matchups, users, rosters)
-		fmt.Println(matchupDict)
+
+		fmt.Println("Matchups for week", week)
+		for _, matchup := range matchupDict {
+			fmt.Println(
+				getMatchupTeamInfo(matchup.TeamOne),
+				" vs ",
+				getMatchupTeamInfo(matchup.TeamTwo),
+			)
+		}
 	},
+}
+
+func getMatchupTeamInfo(team matchupMapper.MatchupTeam) string {
+	return fmt.Sprintf("%s (%s) %.2f", team.TeamName, team.UserName, team.TotalPoints)
 }
 
 func init() {

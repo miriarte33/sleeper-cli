@@ -39,30 +39,21 @@ func MapToMatchupDict(
 	}
 
 	matchupMap := make(map[int64]Matchup)
-
+	teamOneMap := make(map[int64]MatchupTeam)
 	for _, matchupTeamDto := range matchupTeamDtos {
 		matchupId := matchupTeamDto.MatchupID
-		_, exists := matchupMap[matchupId]
+		teamOne, foundTeamOne := teamOneMap[matchupId]
 
-		// If the matchup doesn't exist, create it
-		if exists {
-			continue
-		}
-
-		teamOne := mapToMatchupTeam(matchupTeamDto, users, rosters, playerDtos)
-
-		// Loop through the matchupTeams to find the second team
-		for _, matchupTeam2Dto := range matchupTeamDtos {
-			if matchupTeam2Dto.MatchupID != matchupId {
-				continue
-			}
-
-			teamTwo := mapToMatchupTeam(matchupTeam2Dto, users, rosters, playerDtos)
-
+		if foundTeamOne {
+			// If we already found teamOne, add both teams to the matchupMap
+			teamTwo := mapToMatchupTeam(matchupTeamDto, users, rosters, playerDtos)
 			matchupMap[matchupId] = Matchup{
 				TeamOne: teamOne,
 				TeamTwo: teamTwo,
 			}
+		} else {
+			// Otherwise, add it to the teamOneMap
+			teamOneMap[matchupId] = mapToMatchupTeam(matchupTeamDto, users, rosters, playerDtos)
 		}
 	}
 
@@ -75,17 +66,31 @@ func mapToMatchupTeam(
 	rosters []api.RosterDto,
 	playerDtos map[string]playerLoader.PlayerDto,
 ) MatchupTeam {
+	var starterMap = make(map[string]MatchupPlayer)
+
 	var starters []MatchupPlayer
 	var bench []MatchupPlayer
 
+	// Populate all the players in the matchup to a Map
+	var matchupPlayerMap = make(map[string]MatchupPlayer)
 	for playerID, playerPoints := range matchupTeamDto.PlayersPoints {
 		player := findPlayer(playerID, playerPoints, playerDtos)
+		matchupPlayerMap[playerID] = player
+	}
 
-		// If the player is NOT in matchupTeamDto.Starters, add them to the bench
-		if !isStarter(playerID, matchupTeamDto.Starters) {
+	// Populate the starters in the matchup to a separate Map
+	for _, starterID := range matchupTeamDto.Starters {
+		player := matchupPlayerMap[starterID]
+		starterMap[starterID] = player
+		starters = append(starters, player)
+	}
+
+	// The bench players are the players in the matchup that are NOT in the starter map
+	for _, playerID := range matchupTeamDto.Players {
+		_, isStarter := starterMap[playerID]
+		if !isStarter {
+			player := matchupPlayerMap[playerID]
 			bench = append(bench, player)
-		} else {
-			starters = append(starters, player)
 		}
 	}
 
@@ -110,15 +115,18 @@ func findUser(
 	users []api.UserDto,
 	rosters []api.RosterDto,
 ) *api.UserDto {
+	var rosterOwnerID string
 	for _, roster := range rosters {
 		if roster.ID != rosterID {
 			continue
 		}
 
-		for _, user := range users {
-			if roster.OwnerID == user.UserID {
-				return &user
-			}
+		rosterOwnerID = roster.OwnerID
+	}
+
+	for _, user := range users {
+		if user.UserID == rosterOwnerID {
+			return &user
 		}
 	}
 
@@ -141,16 +149,4 @@ func findPlayer(
 		FullName: player.FullName,
 		Position: player.Position,
 	}
-}
-
-func isStarter(
-	playerID string,
-	starters []string,
-) bool {
-	for _, starterID := range starters {
-		if playerID == starterID {
-			return true
-		}
-	}
-	return false
 }
