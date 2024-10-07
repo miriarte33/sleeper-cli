@@ -9,6 +9,7 @@ import (
 	envLoader "miriarte33/sleeper/env_loader"
 	matchupMapper "miriarte33/sleeper/matchup_mapper"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -51,15 +52,62 @@ Note: Matchups that are still in-progress may not have accurate scores because o
 
 		matchupDict := matchupMapper.MapToMatchupDict(matchups, users, rosters)
 
-		fmt.Println("Matchups for week", week)
-		for _, matchup := range matchupDict {
-			fmt.Println(
-				getMatchupTeamInfo(matchup.TeamOne),
-				" vs ",
-				getMatchupTeamInfo(matchup.TeamTwo),
-			)
+		preselectedUser, err := cmd.Flags().GetString("username")
+		if err != nil {
+			panic(err)
 		}
+
+		selectedMatchupId := int64(-1)
+		if preselectedUser == "" {
+			// Map matchup info to a dictionary where the key is the matchup info string and the value is the matchup ID
+			matchupInfoOptionsDict := getMatchupInfoOptionsDict(matchupDict)
+
+			// Convert the dictionary keys to a list of keys for the survey prompt
+			var matchupInfoOptions []string
+			for matchupInfo := range matchupInfoOptionsDict {
+				matchupInfoOptions = append(matchupInfoOptions, matchupInfo)
+			}
+
+			var selectedMatchupOption string
+			prompt := &survey.Select{
+				Message: fmt.Sprintf("Matchups for week %d. Select a matchup for details.", week),
+				Options: matchupInfoOptions,
+			}
+			survey.AskOne(prompt, &selectedMatchupOption)
+
+			// Get the matchup ID from the selectedMatchupOption by key
+			selectedMatchupId = matchupInfoOptionsDict[selectedMatchupOption]
+		} else {
+			// Find the matchup by the preselected user
+			for matchupId, matchup := range matchupDict {
+				if matchup.TeamOne.UserName == preselectedUser || matchup.TeamTwo.UserName == preselectedUser {
+					selectedMatchupId = matchupId
+					break
+				}
+			}
+		}
+
+		// Print the selected matchup
+		if selectedMatchupId == -1 {
+			fmt.Println("No matchup found for the given week and username.")
+			return
+		}
+
+		fmt.Println(matchupDict[selectedMatchupId])
 	},
+}
+
+// Returns a map where the Key is the matchup info string and the value is the matchup ID
+func getMatchupInfoOptionsDict(matchupDict map[int64]matchupMapper.Matchup) map[string]int64 {
+	var teamInfoList = make(map[string]int64)
+	for matchupId, matchup := range matchupDict {
+		teamInfoList[fmt.Sprint(
+			getMatchupTeamInfo(matchup.TeamOne),
+			" vs ",
+			getMatchupTeamInfo(matchup.TeamTwo),
+		)] = matchupId
+	}
+	return teamInfoList
 }
 
 func getMatchupTeamInfo(team matchupMapper.MatchupTeam) string {
@@ -83,5 +131,12 @@ func init() {
 		"w",
 		-1,
 		"Required. The week to display matchups for.",
+	)
+
+	matchupsCmd.Flags().StringP(
+		"username",
+		"u",
+		"",
+		"Optionally specify the username whose matchup to view for the given week.",
 	)
 }
