@@ -66,7 +66,7 @@ var rostersCmd = &cobra.Command{
 }
 
 func printPlayersInRoster(selectedUserRoster *api.RosterDto) {
-	playersInRoster, err := playerLoader.GetPlayersInRoster(*selectedUserRoster)
+	playersInRoster, err := getPlayersInRoster(*selectedUserRoster)
 	if err != nil {
 		panic(err)
 	}
@@ -125,6 +125,24 @@ func printPlayerInfo(writer *tabwriter.Writer, player playerLoader.PlayerDto) {
 		player.InjuryStatus,
 		player.InjuryBodyPart,
 	)
+}
+
+func getPlayersInRoster(rosterDto api.RosterDto) ([]playerLoader.PlayerDto, error) {
+	players, err := playerLoader.LoadPlayers()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load players: %w", err)
+	}
+
+	var rosterPlayers []playerLoader.PlayerDto
+	for _, playerID := range rosterDto.Players {
+		player, ok := players[playerID]
+		if !ok {
+			return nil, fmt.Errorf("player not found: %s", playerID)
+		}
+		rosterPlayers = append(rosterPlayers, player)
+	}
+
+	return rosterPlayers, nil
 }
 
 func printTeamStatsForRoster(selectedUserRoster *api.RosterDto) {
