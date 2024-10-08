@@ -8,6 +8,8 @@ import (
 	"miriarte33/sleeper/api"
 	envLoader "miriarte33/sleeper/env_loader"
 	matchupMapper "miriarte33/sleeper/matchup_mapper"
+	"os"
+	"text/tabwriter"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
@@ -93,7 +95,67 @@ Note: Matchups that are still in-progress may not have accurate scores because o
 			return
 		}
 
-		fmt.Println(matchupDict[selectedMatchupId])
+		matchup := matchupDict[selectedMatchupId]
+
+		scoreWriter := tabwriter.NewWriter(os.Stdout, 0, 5, 1, ' ', tabwriter.Debug|tabwriter.AlignRight)
+		fmt.Fprintf(
+			scoreWriter,
+			"%s (%s)\t%.2f\t%.2f\t%s (%s)\t\n",
+			matchup.TeamOne.TeamName,
+			matchup.TeamOne.UserName,
+			matchup.TeamOne.TotalPoints,
+			matchup.TeamTwo.TotalPoints,
+			matchup.TeamTwo.TeamName,
+			matchup.TeamTwo.UserName,
+		)
+
+		scoreWriter.Flush()
+
+		fmt.Println()
+		startersWriter := tabwriter.NewWriter(os.Stdout, 0, 5, 1, ' ', tabwriter.Debug|tabwriter.AlignRight)
+		fmt.Fprintf(
+			startersWriter,
+			"Starters (%s)\t-\t-\tStarters (%s)\t\n",
+			matchup.TeamOne.UserName,
+			matchup.TeamTwo.UserName,
+		)
+		for index, playerTeamOne := range matchup.TeamOne.Starters {
+			playerTeamTwo := matchup.TeamTwo.Starters[index]
+			fmt.Fprintf(
+				startersWriter,
+				"%s (%s)\t%.2f\t%.2f\t%s (%s)\t\n",
+				playerTeamOne.FullName,
+				playerTeamOne.Position,
+				playerTeamOne.Points,
+				playerTeamTwo.Points,
+				playerTeamTwo.FullName,
+				playerTeamTwo.Position,
+			)
+		}
+		startersWriter.Flush()
+
+		fmt.Println()
+		benchWriter := tabwriter.NewWriter(os.Stdout, 0, 5, 1, ' ', tabwriter.Debug|tabwriter.AlignRight)
+		fmt.Fprintf(
+			benchWriter,
+			"Bench (%s)\t-\t-\tBench (%s)\t\n",
+			matchup.TeamOne.UserName,
+			matchup.TeamTwo.UserName,
+		)
+		for index, playerTeamOne := range matchup.TeamOne.Bench {
+			playerTeamTwo := matchup.TeamTwo.Bench[index]
+			fmt.Fprintf(
+				benchWriter,
+				"%s (%s)\t%.2f\t%.2f\t%s (%s)\t\n",
+				playerTeamOne.FullName,
+				playerTeamOne.Position,
+				playerTeamOne.Points,
+				playerTeamTwo.Points,
+				playerTeamTwo.FullName,
+				playerTeamTwo.Position,
+			)
+		}
+		benchWriter.Flush()
 	},
 }
 
@@ -101,13 +163,17 @@ Note: Matchups that are still in-progress may not have accurate scores because o
 func getMatchupInfoOptionsDict(matchupDict map[int64]matchupMapper.Matchup) map[string]int64 {
 	var teamInfoList = make(map[string]int64)
 	for matchupId, matchup := range matchupDict {
-		teamInfoList[fmt.Sprint(
-			getMatchupTeamInfo(matchup.TeamOne),
-			" vs ",
-			getMatchupTeamInfo(matchup.TeamTwo),
-		)] = matchupId
+		teamInfoList[getMatchupResults(matchup)] = matchupId
 	}
 	return teamInfoList
+}
+
+func getMatchupResults(matchup matchupMapper.Matchup) string {
+	return fmt.Sprint(
+		getMatchupTeamInfo(matchup.TeamOne),
+		" vs ",
+		getMatchupTeamInfo(matchup.TeamTwo),
+	)
 }
 
 func getMatchupTeamInfo(team matchupMapper.MatchupTeam) string {
