@@ -3,7 +3,6 @@ package playerLoader
 import (
 	"encoding/json"
 	"fmt"
-	"miriarte33/sleeper/api"
 	"os"
 )
 
@@ -16,24 +15,6 @@ type PlayerDto struct {
 	FantasyPositions []string `json:"fantasy_positions"`
 	InjuryStatus     string   `json:"injury_status"`
 	Status           string   `json:"status"`
-}
-
-func GetPlayersInRoster(rosterDto api.RosterDto) ([]PlayerDto, error) {
-	players, err := LoadPlayers()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load players: %w", err)
-	}
-
-	var rosterPlayers []PlayerDto
-	for _, playerID := range rosterDto.Players {
-		player, ok := players[playerID]
-		if !ok {
-			return nil, fmt.Errorf("player not found: %s", playerID)
-		}
-		rosterPlayers = append(rosterPlayers, player)
-	}
-
-	return rosterPlayers, nil
 }
 
 func LoadPlayers() (map[string]PlayerDto, error) {

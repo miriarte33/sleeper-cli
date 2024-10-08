@@ -116,3 +116,32 @@ func GetUsers(leagueID string) ([]UserDto, error) {
 
 	return users, nil
 }
+
+type MatchupTeamDto struct {
+	MatchupID     int64              `json:"matchup_id"`
+	RosterID      int64              `json:"roster_id"`
+	Points        float64            `json:"points"`
+	Players       []string           `json:"players"`
+	Starters      []string           `json:"starters"`
+	PlayersPoints map[string]float64 `json:"players_points"`
+}
+
+func GetMatchupTeams(leagueID string, week int) ([]MatchupTeamDto, error) {
+	url := fmt.Sprintf("https://api.sleeper.app/v1/league/%s/matchups/%d", leagueID, week)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get matchups: %s", resp.Status)
+	}
+
+	var matchups []MatchupTeamDto
+	if err := json.NewDecoder(resp.Body).Decode(&matchups); err != nil {
+		return nil, err
+	}
+
+	return matchups, nil
+}
