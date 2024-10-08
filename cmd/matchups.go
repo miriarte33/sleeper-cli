@@ -119,17 +119,15 @@ Note: Matchups that are still in-progress may not have accurate scores because o
 			matchup.TeamOne.UserName,
 			matchup.TeamTwo.UserName,
 		)
-		for index, playerTeamOne := range matchup.TeamOne.Starters {
-			playerTeamTwo := matchup.TeamTwo.Starters[index]
-			fmt.Fprintf(
+
+		formattedStarterComparisons := formatPlayersSideBySide(
+			matchup.TeamOne.Starters,
+			matchup.TeamTwo.Starters,
+		)
+		for _, formattedPlayerComparison := range formattedStarterComparisons {
+			fmt.Fprint(
 				startersWriter,
-				"%s (%s)\t%.2f\t%.2f\t%s (%s)\t\n",
-				playerTeamOne.FullName,
-				playerTeamOne.Position,
-				playerTeamOne.Points,
-				playerTeamTwo.Points,
-				playerTeamTwo.FullName,
-				playerTeamTwo.Position,
+				formattedPlayerComparison,
 			)
 		}
 		startersWriter.Flush()
@@ -142,21 +140,63 @@ Note: Matchups that are still in-progress may not have accurate scores because o
 			matchup.TeamOne.UserName,
 			matchup.TeamTwo.UserName,
 		)
-		for index, playerTeamOne := range matchup.TeamOne.Bench {
-			playerTeamTwo := matchup.TeamTwo.Bench[index]
-			fmt.Fprintf(
+
+		formattedBenchComparisons := formatPlayersSideBySide(
+			matchup.TeamOne.Bench,
+			matchup.TeamTwo.Bench,
+		)
+		for _, formattedBenchComparison := range formattedBenchComparisons {
+			fmt.Fprint(
 				benchWriter,
-				"%s (%s)\t%.2f\t%.2f\t%s (%s)\t\n",
-				playerTeamOne.FullName,
-				playerTeamOne.Position,
-				playerTeamOne.Points,
-				playerTeamTwo.Points,
-				playerTeamTwo.FullName,
-				playerTeamTwo.Position,
+				formattedBenchComparison,
 			)
 		}
 		benchWriter.Flush()
 	},
+}
+
+// Formats the players side by side to compare their points
+func formatPlayersSideBySide(list1, list2 []matchupMapper.MatchupPlayer) []string {
+	maxLength := len(list1)
+	if len(list2) > maxLength {
+		maxLength = len(list2)
+	}
+
+	var formattedPlayers []string
+	for i := 0; i < maxLength; i++ {
+		var str1, str2 string
+
+		if i < len(list1) {
+			player1 := list1[i]
+			str1 = fmt.Sprintf(
+				"%s (%s)\t%.2f",
+				player1.FullName,
+				player1.Position,
+				player1.Points,
+			)
+		} else {
+			str1 = "-\t-\t"
+		}
+
+		if i < len(list2) {
+			player1 := list2[i]
+			str2 = fmt.Sprintf(
+				"%.2f\t%s (%s)",
+				player1.Points,
+				player1.FullName,
+				player1.Position,
+			)
+		} else {
+			str2 = "-\t-"
+		}
+
+		formattedPlayers = append(
+			formattedPlayers,
+			fmt.Sprintf("%s\t%s\t\n", str1, str2),
+		)
+	}
+
+	return formattedPlayers
 }
 
 // Returns a map where the Key is the matchup info string and the value is the matchup ID
